@@ -32,3 +32,21 @@ if (WIN32)
 else()
     target_link_libraries(Veri_Yapilari_Projesi_Labirent_Oyunu raylib)
 endif()
+
+# --- WEB (EMSCRIPTEN) DERLEMESI ---
+# emcmake cmake -B build-web -DPLATFORM=Web ile derlendiginde index.html/js/wasm uretir.
+# ASYNCIFY: oyundaki ic ice while donguleri tarayiciyi kilitlemeden calissin diye.
+if (EMSCRIPTEN)
+    set_target_properties(Veri_Yapilari_Projesi_Labirent_Oyunu PROPERTIES
+            OUTPUT_NAME "index"
+            SUFFIX ".html")
+    target_link_options(Veri_Yapilari_Projesi_Labirent_Oyunu PRIVATE
+            -sUSE_GLFW=3
+            -sASYNCIFY
+            -sALLOW_MEMORY_GROWTH=1
+            # Stack/Queue yapilari ~80 KB'lik dizileri yerel degisken olarak tutuyor.
+            # Emscripten'in varsayilan yigini 64 KB (Windows'ta 1 MB), bu yuzden buyutuyoruz.
+            -sSTACK_SIZE=4MB
+            -sASYNCIFY_STACK_SIZE=65536
+            --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+endif()

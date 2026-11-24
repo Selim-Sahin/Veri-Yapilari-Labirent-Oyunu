@@ -28,3 +28,15 @@ Bu proje, C dili ve Raylib kütüphanesi kullanılarak geliştirilmiş bir labir
 1. Raylib kütüphanesinin kurulu olduğundan emin olun.
 2. CMake kullanarak projeyi derleyin.
 3. `main.exe` dosyasını çalıştırın.
+
+## Tarayıcıda Oyna
+Oyun, Emscripten ile WebAssembly'ye derlenip GitHub Pages'te yayınlanıyor:
+**https://selim-sahin.github.io/Veri-Yapilari-Labirent-Oyunu/**
+
+`main` dalına yapılan her push'ta `.github/workflows/pages.yml` oyunu yeniden derleyip yayınlar.
+Elle derlemek için (emsdk kuruluyken):
+```
+emcmake cmake -B build-web -DPLATFORM=Web -DCMAKE_BUILD_TYPE=Release
+cmake --build build-web
+```
+Not: Tarayıcı sürümünde skorlar sayfa yenilenince sıfırlanır.

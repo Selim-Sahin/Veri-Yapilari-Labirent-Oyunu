@@ -76,7 +76,10 @@ int main() {
                 reset_search_ui();
                 durum = SKORLAR;
             }
+#ifndef __EMSCRIPTEN__
+            // Tarayicida "cikis" sayfayi donuk birakir; sekmeyi kapatmak yeterli
             if (ButonCiz("CIKIS", (Rectangle){300, 390, 200, 50})) break;
+#endif
         }
 
         else if (durum == AYARLAR) {
@@ -121,14 +124,22 @@ int main() {
                 if (w < 5) w = 5; if (w > 50) w = 50;
                 if (h < 5) h = 5; if (h > 25) h = 25;
 
+#ifdef __EMSCRIPTEN__
+                EndDrawing(); // tarayicida pencere kapanmadigi icin acik kalan cizimi bitir
+#else
                 CloseWindow();
+#endif
                 Labirent oyun;
                 labirenti_hazirla(&oyun, w, h);
                 labirenti_uret(&oyun);
                 son_puan = oyunu_baslat(&oyun);
                 labirenti_temizle(&oyun);
 
+#ifdef __EMSCRIPTEN__
+                BeginDrawing(); // dongunun sonundaki EndDrawing ile eslessin
+#else
                 InitWindow(800, 600, "Labirent");
+#endif
                 SetTargetFPS(60);
                 Image icon2 = GenImageColor(64, 64, DARKGRAY);
                 ImageDrawRectangle(&icon2, 8, 8, 48, 48, LIGHTGRAY);
