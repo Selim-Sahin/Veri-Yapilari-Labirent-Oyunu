@@ -24,7 +24,12 @@ int oyunu_baslat(Labirent *labirent) {
     if (ekran_genislik > 1600) ekran_genislik = 1600;
     if (ekran_yukseklik > 900) ekran_yukseklik = 900;
 
+#ifdef __EMSCRIPTEN__
+    // Tarayicida tek bir canvas var: pencereyi kapatip acmak yerine boyutunu degistiriyoruz
+    SetWindowSize(ekran_genislik, ekran_yukseklik);
+#else
     InitWindow(ekran_genislik, ekran_yukseklik, "Labirent");
+#endif
     SetTargetFPS(60);
 
     Image icon = GenImageColor(64, 64, DARKGRAY);
@@ -114,6 +119,10 @@ int oyunu_baslat(Labirent *labirent) {
         EndDrawing();
     }
 
+#ifdef __EMSCRIPTEN__
+    SetWindowSize(800, 600); // menu boyutuna geri don
+#else
     CloseWindow();
+#endif
     return puan;
 }
