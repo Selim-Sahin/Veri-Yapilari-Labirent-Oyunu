@@ -41,6 +41,8 @@ typedef struct {
 typedef struct SkorDugumu {
     char isim[50];
     int puan;
+    int genislik;   // oynanan labirentin boyutu (0: eski kayit, bilinmiyor)
+    int yukseklik;
     struct SkorDugumu *sol;
     struct SkorDugumu *sag;
 } SkorDugumu;
@@ -52,10 +54,8 @@ void labirenti_ciz(Labirent *labirent);
 void labirenti_uret(Labirent *labirent);
 void en_kisa_yolu_bul(Labirent *labirent);
 
-// Skor Yonetimi
-void add_score(char *name, int point);
+// Skor Yonetimi (kayitlar skor_depo.c'den gelir: exe'de dosya, tarayicida Firestore)
 void show_scores_gui();
-void reset_scores();
 void reset_search_ui(); // <--- YENI EKLEME: Arama temizleme fonksiyonu
 
 // Algoritmalar

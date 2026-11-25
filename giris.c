@@ -4,6 +4,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <string.h>
+#include <ctype.h>
 
 static bool basildi = false;
 static bool birakildi = false;
@@ -90,6 +91,9 @@ static void suz(YaziKutusu kutu, const char *gelen, char *metin, int en_fazla) {
         } else {
             if (c < 32 || c > 126) continue; // Turkce harf vb. ASCII disi: klavye yolunda da alinmiyor
             if (kutu == KUTU_ISIM && c == '_') c = ' ';
+            // Isim: yalnizca harf, rakam, bosluk (Firestore kurali da bunu ister).
+            // Turkce harfler shell.html'de daha once ASCII'ye cevrilir (s->s, g->g ...).
+            if (kutu == KUTU_ISIM && !isalnum(c) && c != ' ') continue;
         }
         metin[n++] = (char)c;
     }

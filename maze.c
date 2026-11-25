@@ -5,6 +5,7 @@
 #include "stack.h"
 #include "giris.h"
 #include "queue.h"
+#include "skor_depo.h"
 
 // --- 1. BELLEK YONETIMI ---
 void labirenti_hazirla(Labirent *labirent, int w, int h) {
@@ -217,10 +218,12 @@ void en_kisa_yolu_bul(Labirent *labirent) {
 
 // --- 5. SKOR FONKSIYONLARI ---
 
-SkorDugumu* dugum_olustur(char *isim, int puan) {
+SkorDugumu* dugum_olustur(const SkorKaydi *kayit) {
     SkorDugumu *yeni = (SkorDugumu*)malloc(sizeof(SkorDugumu));
-    strcpy(yeni->isim, isim);
-    yeni->puan = puan;
+    strcpy(yeni->isim, kayit->isim);
+    yeni->puan = kayit->puan;
+    yeni->genislik = kayit->genislik;
+    yeni->yukseklik = kayit->yukseklik;
     yeni->sol = NULL;
     yeni->sag = NULL;
     return yeni;
@@ -237,19 +240,6 @@ void bst_temizle(SkorDugumu *kok) {
     bst_temizle(kok->sol);
     bst_temizle(kok->sag);
     free(kok);
-}
-
-void add_score(char *name, int point) {
-    char safe_name[50];
-    strcpy(safe_name, name);
-    for(int i=0; safe_name[i] != '\0'; i++) if (safe_name[i] == ' ') safe_name[i] = '_';
-    FILE *file = fopen("highscore.txt", "a");
-    if (file != NULL) { fprintf(file, "%s %d\n", safe_name, point); fclose(file); }
-}
-
-void reset_scores() {
-    FILE *file = fopen("highscore.txt", "w");
-    if (file != NULL) fclose(file);
 }
 
 void agaci_diziye_dok(SkorDugumu *kok, SkorDugumu **dizi, int *index) {
@@ -338,18 +328,16 @@ void reset_search_ui() {
 
 void show_scores_gui() {
     SkorDugumu *kok = NULL;
-    char dosya_isim[50];
-    int dosya_puan;
     int eleman_sayisi = 0;
 
-    FILE *file = fopen("highscore.txt", "r");
-    if (file != NULL) {
-        while (fscanf(file, "%s %d", dosya_isim, &dosya_puan) == 2) {
-            for(int i=0; dosya_isim[i] != '\0'; i++) if (dosya_isim[i] == '_') dosya_isim[i] = ' ';
-            bst_ekle(&kok, dugum_olustur(dosya_isim, dosya_puan));
-            eleman_sayisi++;
-        }
-        fclose(file);
+    // Kayitlar depodan gelir (exe: highscore.txt, tarayici: Firestore). Tablo her karede
+    // bu kayitlardan BST'ye eklenerek kurulur; siralama ve arama asagidaki algoritmalarla.
+    DepoDurumu depo = skorlari_yukle_durumu();
+    int kayit_adet = 0;
+    const SkorKaydi *kayitlar = skor_listesi(&kayit_adet);
+    for (int i = 0; i < kayit_adet; i++) {
+        bst_ekle(&kok, dugum_olustur(&kayitlar[i]));
+        eleman_sayisi++;
     }
 
     // --- DUZEN ---
@@ -469,11 +457,17 @@ void show_scores_gui() {
         }
 
         // LISTELEME
+        // Her satir: sira + isim, labirent boyutu (GxY), puan
+        int boyut_x = d ? 410 : 450, puan_x = d ? 520 : 560;
+        int boyut_yazi = d ? 22 : 24;
         int y_pos = liste_y;
         for (int i = 0; i < eleman_sayisi; i++) {
             if (y_pos > liste_son) break;
-            DrawText(TextFormat("%d. %s", i + 1, dizi[i]->isim), d ? 100 : 250, y_pos, satir_boyu, BLACK);
-            DrawText(TextFormat("%d Puan", dizi[i]->puan), d ? 520 : 550, y_pos, satir_boyu, DARKGREEN);
+            DrawText(TextFormat("%d. %s", i + 1, dizi[i]->isim), d ? 100 : 120, y_pos, satir_boyu, BLACK);
+            if (dizi[i]->genislik > 0 && dizi[i]->yukseklik > 0)
+                DrawText(TextFormat("%dx%d", dizi[i]->genislik, dizi[i]->yukseklik), boyut_x,
+                         y_pos + (satir_boyu - boyut_yazi) / 2, boyut_yazi, GRAY);
+            DrawText(TextFormat("%d Puan", dizi[i]->puan), puan_x, y_pos, satir_boyu, DARKGREEN);
             y_pos += satir_arasi;
         }
 
@@ -487,11 +481,18 @@ void show_scores_gui() {
 
         free(dizi);
     } else {
-        if (d) DrawText("Henuz kayitli skor yok.", 100, liste_y, 26, GRAY);
-        else DrawText("Henuz kayitli skor yok.", 300, 150, 20, GRAY);
+        const char *bos = "Henuz kayitli skor yok.";
+        Color bos_renk = GRAY;
+        if (depo == DEPO_BEKLIYOR) bos = "Yukleniyor...";
+        else if (depo == DEPO_HATA) { bos = "Baglanti hatasi. YENILE'ye basin."; bos_renk = RED; }
+        if (d) DrawText(bos, 100, liste_y, 26, bos_renk);
+        else DrawText(bos, 120, 150, 20, bos_renk);
     }
+    // Liste gorunurken arka planda yenileniyorsa / yenileme basarisizsa kucuk bir not
+    if (eleman_sayisi > 0 && depo == DEPO_BEKLIYOR) DrawText("Yenileniyor...", d ? 600 : 690, d ? 2 : 105, 16, GRAY);
+    if (eleman_sayisi > 0 && depo == DEPO_HATA) DrawText("Baglanti hatasi", d ? 600 : 650, d ? 2 : 105, 16, RED);
 
     if (d) DrawLine(100, cizgi_y, 700, cizgi_y, DARKBLUE);
-    else DrawLine(250, 130, 600, 130, DARKBLUE);
+    else DrawLine(120, 130, 680, 130, DARKBLUE);
     bst_temizle(kok);
 }

@@ -5,11 +5,13 @@
 #include "maze.h"
 #include "game.h"
 #include "giris.h"
+#include "skor_depo.h"
 
 typedef enum {
     MENU,
     AYARLAR,
     OYUN,
+    KAYIT_SORUSU,   // oyun bitti: "puaninizi kaydetmek ister misiniz?"
     ISIM_GIRIS,
     SKORLAR
 } OyunDurumu;
@@ -30,6 +32,11 @@ bool ButonCiz(const char *text, Rectangle rec) {
     DrawText(text, rec.x + (rec.width - textW) / 2, rec.y + (rec.height - boyut) / 2, boyut, BLACK);
     if (tiklama_birakildi(rec)) tiklandi = true;
     return tiklandi;
+}
+
+// Yaziyi 800 piksellik ekranda yatay ortalar
+void OrtaYazi(const char *text, int y, int boyut, Color renk) {
+    DrawText(text, (800 - MeasureText(text, boyut)) / 2, y, boyut, renk);
 }
 
 // Odaktaki yazi kutusunda (tarayici) yanip sonen imlec
@@ -58,6 +65,9 @@ int main() {
     int isim_harf_sayisi = 0;
     int aktif_kutu = 0;
     int son_puan = 0;
+    int son_genislik = 0, son_yukseklik = 0;  // son oynanan labirentin boyutu
+    bool kaydediliyor = false;                // skor internete gonderiliyor, cevap bekleniyor
+    const char *isim_mesaji = "";             // isim ekranindaki uyari (isim alinmis vb.)
 
     while (!WindowShouldClose()) {
         giris_guncelle(); // fare + dokunma durumunu bu kare icin oku
@@ -89,6 +99,7 @@ int main() {
             if (ButonCiz("OYUNU BASLAT", (Rectangle){bx, 250, bw, h})) durum = AYARLAR;
             if (ButonCiz("SKOR TABLOSU", (Rectangle){bx, 250 + (h + 20), bw, h})) {
                 reset_search_ui();
+                skorlari_yukle_baslat();
                 durum = SKORLAR;
             }
 #ifndef __EMSCRIPTEN__
@@ -175,6 +186,8 @@ int main() {
 #else
                 CloseWindow();
 #endif
+                son_genislik = w;
+                son_yukseklik = y_boyut;
                 Labirent oyun;
                 labirenti_hazirla(&oyun, w, y_boyut);
                 labirenti_uret(&oyun);
@@ -195,14 +208,34 @@ int main() {
                 UnloadImage(icon2);
 
                 if (son_puan > 0) {
-                    durum = ISIM_GIRIS;
-                    oyuncu_ismi[0] = '\0';
-                    isim_harf_sayisi = 0;
+                    durum = KAYIT_SORUSU; // kaydetmek istemeyen de olabilir: once sor
                 } else {
                     durum = MENU;
                 }
             }
             if (ButonCiz("GERI", btnGeri)) durum = MENU;
+        }
+
+        else if (durum == KAYIT_SORUSU) {
+            bool d = dokunmatik_mi();
+            int h = dokunma_boyu(50);
+            Rectangle btnEvet = d ? (Rectangle){150, 330, 240, h} : (Rectangle){190, 340, 200, 50};
+            Rectangle btnHayir = d ? (Rectangle){410, 330, 240, h} : (Rectangle){410, 340, 200, 50};
+
+            OrtaYazi("TEBRIKLER!", d ? 50 : 90, 40, GREEN);
+            OrtaYazi(TextFormat("PUANINIZ: %d", son_puan), d ? 115 : 150, 30, DARKBLUE);
+            OrtaYazi(TextFormat("LABIRENT: %dx%d", son_genislik, son_yukseklik), d ? 160 : 195, 24, GRAY);
+            OrtaYazi("PUANINIZI KAYDETMEK", d ? 215 : 245, 28, BLACK);
+            OrtaYazi("ISTER MISINIZ?", d ? 255 : 280, 28, BLACK);
+
+            if (ButonCiz("EVET", btnEvet)) {
+                oyuncu_ismi[0] = '\0';
+                isim_harf_sayisi = 0;
+                isim_mesaji = "";
+                kaydediliyor = false;
+                durum = ISIM_GIRIS;
+            }
+            if (ButonCiz("HAYIR", btnHayir)) durum = MENU; // hicbir sey kaydedilmez
         }
 
         else if (durum == ISIM_GIRIS) {
@@ -211,35 +244,41 @@ int main() {
             int kh = dokunma_boyu(40);
             int kyazi = d ? (int)(kh * 0.45f) : 30;
             Rectangle kutu = d ? (Rectangle){150, 180, 500, kh} : (Rectangle){250, 280, 300, 40};
-            Rectangle btnKaydet = d ? (Rectangle){250, kutu.y + kh + 30, 300, h} : (Rectangle){300, 350, 200, 50};
+            Rectangle btnKaydet = d ? (Rectangle){150, kutu.y + kh + 30, 240, h} : (Rectangle){190, 350, 200, 50};
+            Rectangle btnVazgec = d ? (Rectangle){410, kutu.y + kh + 30, 240, h} : (Rectangle){410, 350, 200, 50};
+            int mesaj_y = (int)(btnKaydet.y + btnKaydet.height + 20);
 
-            DrawText("TEBRIKLER!", 300, d ? 30 : 100, 40, GREEN);
-            DrawText(TextFormat("PUANINIZ: %d", son_puan), 300, d ? 80 : 150, 30, DARKBLUE);
+            OrtaYazi(TextFormat("PUANINIZ: %d  (%dx%d)", son_puan, son_genislik, son_yukseklik),
+                     d ? 40 : 150, 30, DARKBLUE);
             DrawText("Lutfen isminizi giriniz:", d ? 150 : 250, d ? 140 : 250, d ? 26 : 20, BLACK);
+            if (!d) DrawText(TextFormat("(%d-%d harf/rakam, ayni isim bir kez kullanilir)", ISIM_EN_AZ, ISIM_EN_FAZLA),
+                             250, 325, 16, GRAY);
 
-            int key = GetCharPressed();
-            while (key > 0) {
-                if (key == 32) key = 95; // Bosluk girilirse 95(_) yapalim (Input sirasinda da kontrol)
-                                         // Ama maze.c'deki add_score zaten yapiyor, burada gorsel olarak
-                                         // bosluk gormek istiyorsan 32 birakabilirsin.
-                                         // Yukarida "bosluk gozuksun" demistin, o zaman:
-                if (key == 95) key = 32; // Kullanici _ basarsa bosluk yapalim
-
-                if (((key >= 32) && (key <= 126)) && (isim_harf_sayisi < 15)) {
-                    oyuncu_ismi[isim_harf_sayisi] = (char)key;
-                    oyuncu_ismi[isim_harf_sayisi+1] = '\0';
-                    isim_harf_sayisi++;
+            if (!kaydediliyor) {
+                int key = GetCharPressed();
+                while (key > 0) {
+                    if (key == '_') key = ' '; // eski aliskanlik: _ yazan bosluk yazmis olsun
+                    bool uygun = (key == ' ') || (key >= '0' && key <= '9') ||
+                                 (key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z');
+                    if (uygun && isim_harf_sayisi < ISIM_EN_FAZLA) {
+                        oyuncu_ismi[isim_harf_sayisi] = (char)key;
+                        oyuncu_ismi[isim_harf_sayisi+1] = '\0';
+                        isim_harf_sayisi++;
+                        isim_mesaji = "";
+                    }
+                    key = GetCharPressed();
                 }
-                key = GetCharPressed();
-            }
-            if (IsKeyPressed(KEY_BACKSPACE)) {
-                isim_harf_sayisi--;
-                if (isim_harf_sayisi < 0) isim_harf_sayisi = 0;
-                oyuncu_ismi[isim_harf_sayisi] = '\0';
+                if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) {
+                    isim_harf_sayisi--;
+                    if (isim_harf_sayisi < 0) isim_harf_sayisi = 0;
+                    oyuncu_ismi[isim_harf_sayisi] = '\0';
+                    isim_mesaji = "";
+                }
             }
 
             // Tarayici: kutunun ustundeki <input> ile esitle (telefonda klavye buradan acilir)
-            bool odak = yazi_kutusu(KUTU_ISIM, kutu, oyuncu_ismi, 15);
+            bool odak = yazi_kutusu(KUTU_ISIM, kutu, oyuncu_ismi, ISIM_EN_FAZLA);
+            bool enter = yazi_kutusu_enter(KUTU_ISIM);
             isim_harf_sayisi = (int)strlen(oyuncu_ismi);
 
             DrawRectangleRec(kutu, LIGHTGRAY);
@@ -248,12 +287,40 @@ int main() {
             DrawText(oyuncu_ismi, kutu.x + 10, yazi_y, kyazi, BLACK);
             if (odak) ImlecCiz(kutu.x + 10 + MeasureText(oyuncu_ismi, kyazi), yazi_y, kyazi);
 
-            if (ButonCiz("KAYDET", btnKaydet)) {
-                if (isim_harf_sayisi > 0) {
-                    add_score(oyuncu_ismi, son_puan);
-                    reset_search_ui(); // <--- YENI: Kaydettikten sonra da arama temizlensin
+            if (kaydediliyor) {
+                // Cevap gelene kadar butonlar calismaz; her karede sonucu sor
+                DrawRectangleRec(btnKaydet, GRAY);
+                DrawRectangleRec(btnVazgec, GRAY);
+                OrtaYazi("KAYDEDILIYOR...", mesaj_y, 24, DARKGRAY);
+                DepoDurumu sonuc = skor_kaydet_durumu();
+                if (sonuc == DEPO_TAMAM) {
+                    kaydediliyor = false;
+                    reset_search_ui();
+                    skorlari_yukle_baslat(); // yeni skor tabloda gorunsun
                     durum = SKORLAR;
+                } else if (sonuc == DEPO_ISIM_ALINMIS) {
+                    kaydediliyor = false;
+                    isim_mesaji = "BU ISIM ALINMIS, BASKA BIR ISIM DENEYIN";
+                } else if (sonuc == DEPO_HATA) {
+                    kaydediliyor = false;
+                    isim_mesaji = "BAGLANTI HATASI, TEKRAR DENEYIN";
                 }
+            } else {
+                bool kaydet = ButonCiz("KAYDET", btnKaydet) || enter || IsKeyPressed(KEY_ENTER);
+                if (ButonCiz("VAZGEC", btnVazgec)) {
+                    durum = MENU; // kaydetmeden cik
+                } else if (kaydet) {
+                    isim_duzenle(oyuncu_ismi);
+                    isim_harf_sayisi = (int)strlen(oyuncu_ismi);
+                    if (isim_harf_sayisi < ISIM_EN_AZ) {
+                        isim_mesaji = "ISIM EN AZ 2 KARAKTER OLMALI";
+                    } else {
+                        isim_mesaji = "";
+                        kaydediliyor = true;
+                        skor_kaydet_baslat(oyuncu_ismi, son_puan, son_genislik, son_yukseklik);
+                    }
+                }
+                if (isim_mesaji[0] != '\0') OrtaYazi(isim_mesaji, mesaj_y, 22, RED);
             }
         }
 
@@ -263,9 +330,15 @@ int main() {
             int h = dokunma_boyu(50);
             bool d = dokunmatik_mi();
             Rectangle btnDon = d ? (Rectangle){100, 590 - h, 290, h} : (Rectangle){100, 500, 200, 50};
-            Rectangle btnSifirla = d ? (Rectangle){410, 590 - h, 290, h} : (Rectangle){500, 500, 200, 50};
+            Rectangle btnSag = d ? (Rectangle){410, 590 - h, 290, h} : (Rectangle){500, 500, 200, 50};
             if (ButonCiz("MENUYE DON", btnDon)) durum = MENU;
-            if (ButonCiz("TABLOYU SIFIRLA", btnSifirla)) reset_scores();
+#ifdef __EMSCRIPTEN__
+            // Tarayicida tablo herkesin ortak tablosu: silme butonu yok (yalnizca Firebase
+            // konsolundan silinebilir). Yerine baskalarinin yeni skorlarini getiren YENILE.
+            if (ButonCiz("YENILE", btnSag)) skorlari_yukle_baslat();
+#else
+            if (ButonCiz("TABLOYU SIFIRLA", btnSag)) { skorlari_sifirla(); skorlari_yukle_baslat(); }
+#endif
         }
         EndDrawing();
     }

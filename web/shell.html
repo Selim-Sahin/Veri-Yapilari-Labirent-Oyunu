@@ -81,7 +81,7 @@
     <!-- Sira giris.h'deki YaziKutusu ile ayni olmali -->
     <input class="kutu" aria-label="Labirent genişliği" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" enterkeyhint="done">
     <input class="kutu" aria-label="Labirent yüksekliği" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" enterkeyhint="done">
-    <input class="kutu" aria-label="İsim" maxlength="15" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+    <input class="kutu" data-tur="isim" aria-label="İsim" maxlength="15" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
     <input class="kutu" aria-label="Skor tablosunda ara" maxlength="20" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
     <div id="kontroller">
       <div class="yon-tuslari">
@@ -176,6 +176,13 @@
       el.addEventListener('pointerdown', odakla);
       el.addEventListener('click', odakla);
       el.addEventListener('input', function () {
+        // Isim: raylib fontu Turkce harf cizemez, Firestore kurali da yalnizca a-z/0-9 ister.
+        // Turkce harfleri karsiligina cevir (Selin Şahin -> Selin Sahin); gerisini C suzer.
+        if (el.dataset.tur === 'isim') {
+          var tr = { 'ç':'c','Ç':'C','ğ':'g','Ğ':'G','ı':'i','İ':'I','ö':'o','Ö':'O','ş':'s','Ş':'S','ü':'u','Ü':'U' };
+          var ascii = el.value.replace(/[çÇğĞıİöÖşŞüÜ]/g, function (h) { return tr[h]; });
+          if (ascii !== el.value) el.value = ascii;
+        }
         // Sayi kutusunda rakam disini hemen at: C bir sonraki karede suzene kadar maxlength
         // dolup sonraki rakami engellemesin
         if (el.inputMode === 'numeric') {
@@ -230,6 +237,97 @@
     Module.kutuYaz = function (i, s) { var el = kutular[i]; if (el.value !== s) el.value = s; };
     Module.kutuOdakta = function (i) { return document.activeElement === kutular[i] ? 1 : 0; };
     Module.kutuEnter = function (i) { var el = kutular[i], e = el._enter; el._enter = false; return e ? 1 : 0; };
+
+    // --- Ortak skor tablosu (Firebase Firestore) ---
+    // C (skor_depo.c) islemi baslatir ve her karede durumu okur; burada asla beklenmez.
+    // Durum kodlari skor_depo.h'deki DepoDurumu ile ayni: -1 bosta, 0 bekliyor, 1 tamam,
+    // 2 isim alinmis, 3 baglanti/sunucu hatasi. Firebase asagidaki modul script'inde yuklenir.
+    Module.kayitDurumu = -1;
+    Module.tabloDurumu = -1;
+    Module.tabloSurumu = 0;   // her basarili yuklemede artar; C yeni tabloyu buradan anlar
+    Module.skorTablosu = [];
+    var firebaseHazir = new Promise(function (coz, reddet) {
+      Module.firebaseCoz = coz; Module.firebaseReddet = reddet;
+    });
+    // Internet yoksa ya da Firebase yuklenemezse oyun sonsuza kadar beklemesin
+    function zamanAsimi(soz, ms) {
+      return Promise.race([soz, new Promise(function (_, reddet) {
+        setTimeout(function () { reddet(new Error('zaman asimi')); }, ms);
+      })]);
+    }
+    Module.skorKaydet = function (isim, puan, genislik, yukseklik) {
+      Module.kayitDurumu = 0;
+      zamanAsimi(firebaseHazir.then(function (fb) { return fb.kaydet(isim, puan, genislik, yukseklik); }), 15000)
+        .then(function (sonuc) { Module.kayitDurumu = sonuc; })
+        .catch(function (e) { console.error('Skor kaydedilemedi:', e); Module.kayitDurumu = 3; });
+    };
+    var sonYukleme = 0; // ust uste YENILE'de yalnizca en son istegin cevabi kullanilir
+    Module.skorlariYukle = function () {
+      var no = ++sonYukleme;
+      Module.tabloDurumu = 0;
+      zamanAsimi(firebaseHazir.then(function (fb) { return fb.yukle(); }), 15000)
+        .then(function (liste) {
+          if (no !== sonYukleme) return;
+          Module.skorTablosu = liste; Module.tabloSurumu++; Module.tabloDurumu = 1;
+        })
+        .catch(function (e) {
+          if (no !== sonYukleme) return;
+          console.error('Skor tablosu yuklenemedi:', e); Module.tabloDurumu = 3;
+        });
+    };
+  </script>
+  <script type="module">
+    // Firestore Lite: tek seferlik okuma/yazma icin kucuk surum (canli dinleme yok, gerek de yok).
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js';
+    import { getFirestore, doc, collection, query, orderBy, limit, getDocs, runTransaction, serverTimestamp }
+      from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore-lite.js';
+
+    // Bu ayarlar gizli degil: Firebase'in herkese acik proje kimligi. Guvenligi Firestore
+    // kurallari saglar (okuma + yeni kayit serbest; degistirme ve silme herkese kapali).
+    const firebaseConfig = {
+      apiKey: 'AIzaSyDWY1Kvxwxcu0AkDwnFobvAd2vUslkxS70',
+      authDomain: 'labirent-skor.firebaseapp.com',
+      projectId: 'labirent-skor',
+      storageBucket: 'labirent-skor.firebasestorage.app',
+      messagingSenderId: '408987233965',
+      appId: '1:408987233965:web:b86a019881dd02908e6024'
+    };
+
+    try {
+      const db = getFirestore(initializeApp(firebaseConfig));
+      const ALINMIS = 'isim-alinmis';
+      Module.firebaseCoz({
+        // Belge kimligi = ismin kucuk harfli hali: "Selim" ve "SELIM" ayni belgedir.
+        // Once okuyup varsa "alinmis" deriz; yoksa olustururuz. Iki kisi ayni anda ayni
+        // ismi denerse kurallar ikincisinin yazmasini (guncelleme sayildigi icin) reddeder.
+        kaydet: async function (isim, puan, genislik, yukseklik) {
+          const belge = doc(db, 'skorlar', isim.toLowerCase());
+          try {
+            await runTransaction(db, async function (islem) {
+              const mevcut = await islem.get(belge);
+              if (mevcut.exists()) throw ALINMIS;
+              islem.set(belge, { isim: isim, puan: puan, genislik: genislik, yukseklik: yukseklik,
+                                 tarih: serverTimestamp() });
+            });
+            return 1;
+          } catch (e) {
+            if (e === ALINMIS) return 2;
+            throw e;
+          }
+        },
+        // Puana gore en yuksek 200 kayit (her kayit bir "okuma" sayilir; ucretsiz kota gunde 50.000)
+        yukle: async function () {
+          const sonuc = await getDocs(query(collection(db, 'skorlar'), orderBy('puan', 'desc'), limit(200)));
+          return sonuc.docs.map(function (b) {
+            const v = b.data();
+            return { isim: String(v.isim || ''), puan: v.puan | 0, genislik: v.genislik | 0, yukseklik: v.yukseklik | 0 };
+          });
+        }
+      });
+    } catch (e) {
+      console.error('Firebase baslatilamadi:', e);
+      Module.firebaseReddet(e);
+    }
   </script>
   {{{ SCRIPT }}}
 </body>

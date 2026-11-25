@@ -26,7 +26,9 @@ add_executable(Veri_Yapilari_Projesi_Labirent_Oyunu WIN32
         queue.h
         queue.c
         giris.h
-        giris.c)
+        giris.c
+        skor_depo.h
+        skor_depo.c)
 
 # Raylib kutuphanesini projeye bagla
 # Windows'ta pencere yonetimi icin gerekli bazi sistem kutuphanelerini de ekliyoruz
