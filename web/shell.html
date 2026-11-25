@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Labirent — Veri Yapıları Oyunu</title>
+  <meta name="description" content="C ve Raylib ile yazılmış, tarayıcıda oynanan labirent oyunu: Stack ile labirent üretimi ve geri alma, Queue ile BFS en kısa yol, BST ile skor tablosu.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Labirent — Veri Yapıları Oyunu">
+  <meta property="og:description" content="Tarayıcıda oyna: Stack ile labirent üretimi, Queue ile BFS en kısa yol, BST ile skor tablosu.">
+  <meta property="og:url" content="https://selim-sahin.github.io/Veri-Yapilari-Labirent-Oyunu/">
+  <meta property="og:image" content="https://selim-sahin.github.io/Veri-Yapilari-Labirent-Oyunu/onizleme.png">
+  <meta property="og:image:width" content="800">
+  <meta property="og:image:height" content="660">
+  <meta property="og:image:alt" content="Labirent oyunu: H tuşuyla BFS en kısa yolu oklarla gösterilmiş">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
     html, body { margin: 0; background: #1e1e1e; color: #ddd; font-family: system-ui, sans-serif; }
     main { display: flex; flex-direction: column; align-items: center; padding: 16px; gap: 12px; }
@@ -11,10 +21,35 @@
     #durum { font-size: 14px; color: #aaa; }
     p { margin: 0; font-size: 14px; color: #999; text-align: center; }
     kbd { background: #333; border-radius: 4px; padding: 1px 6px; color: #eee; }
+
+    /* Tanitim alani: oyun yuklenene kadar buyuk, sonra tek satira iner */
+    #tanitim { max-width: 800px; width: 100%; text-align: center; }
+    #tanitim h1 { margin: 8px 0; font-size: 28px; color: #fff; transition: font-size .4s, margin .4s; }
+    #tanitim .aciklama { font-size: 15px; line-height: 1.5; color: #bbb; max-width: 640px; margin: 0 auto 16px; }
+    #tanitim .aciklama b { color: #8ab4ff; font-weight: 600; }
+    #tanitim figure { margin: 0 auto; max-width: 560px; overflow: hidden;
+      max-height: 600px; opacity: 1; transition: max-height .5s ease, opacity .4s ease; }
+    #tanitim img { display: block; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+    #tanitim figcaption { font-size: 13px; color: #888; margin-top: 6px; }
+    body.oyun-hazir #tanitim h1 { font-size: 20px; margin: 0; }
+    body.oyun-hazir #tanitim .aciklama { display: none; }
+    body.oyun-hazir #tanitim figure { max-height: 0; opacity: 0; }
   </style>
 </head>
 <body>
   <main>
+    <header id="tanitim">
+      <h1>Labirent — Veri Yapıları Oyunu</h1>
+      <p class="aciklama">
+        C ve Raylib ile yazıldı, WebAssembly ile tarayıcıda çalışıyor. Labirent <b>Stack</b> tabanlı DFS ile üretilir,
+        <kbd>H</kbd> tuşu <b>Queue</b> ile BFS çalıştırıp en kısa yolu gösterir, <kbd>Z</kbd> hamleyi yine
+        <b>Stack</b> ile geri alır; skor tablosu <b>BST</b>, sıralama ve ikili arama kullanır.
+      </p>
+      <figure>
+        <img src="onizleme.png" width="800" height="660" alt="Oyun ekranı: H tuşuyla BFS en kısa yolu oklarla gösterilmiş labirent">
+        <figcaption>H tuşu: BFS ile bulunan en kısa yol</figcaption>
+      </figure>
+    </header>
     <div id="durum">Yükleniyor…</div>
     <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
     <p>Hareket: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> · İpucu: <kbd>H</kbd> · Geri al: <kbd>Z</kbd></p>
@@ -25,7 +60,10 @@
     var Module = {
       canvas: canvas,
       setStatus: function (t) { document.getElementById('durum').textContent = t || ''; },
-      onRuntimeInitialized: function () { canvas.focus(); }
+      onRuntimeInitialized: function () {
+        document.body.classList.add('oyun-hazir');
+        canvas.focus();
+      }
     };
     canvas.addEventListener('click', function () { canvas.focus(); });
   </script>

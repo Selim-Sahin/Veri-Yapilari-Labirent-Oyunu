@@ -49,4 +49,10 @@ if (EMSCRIPTEN)
             -sSTACK_SIZE=4MB
             -sASYNCIFY_STACK_SIZE=65536
             --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+    # shell.html degisince sayfa yeniden uretilsin
+    set_property(TARGET Veri_Yapilari_Projesi_Labirent_Oyunu APPEND PROPERTY
+            LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+    # Tanitim/onizleme gorseli index.html'in yanina kopyalanir (shell.html ve og:image kullanir)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/web/onizleme.png
+            ${CMAKE_CURRENT_BINARY_DIR}/onizleme.png COPYONLY)
 endif()
