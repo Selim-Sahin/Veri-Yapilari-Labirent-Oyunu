@@ -51,6 +51,8 @@ if (EMSCRIPTEN)
             # Emscripten'in varsayilan yigini 64 KB (Windows'ta 1 MB), bu yuzden buyutuyoruz.
             -sSTACK_SIZE=4MB
             -sASYNCIFY_STACK_SIZE=65536
+            # giris.c'deki EM_ASM bloklari (yazi kutulari) bu iki yardimciyi kullaniyor
+            "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$stringToUTF8,$UTF8ToString"
             --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
     # shell.html degisince sayfa yeniden uretilsin
     set_property(TARGET Veri_Yapilari_Projesi_Labirent_Oyunu APPEND PROPERTY

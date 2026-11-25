@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "raylib.h"
 
-// Tiklamayi (fare, dokunma, kalem) tek yerden okur.
+// Tiklamayi (fare, dokunma, kalem) ve yazi kutularini tek yerden okur.
 //
 // Masaustunde (exe) raylib'in IsMouseButtonPressed/Released + GetMousePosition'i kullanilir.
 //
@@ -22,5 +22,33 @@ bool tiklama_basildi(Rectangle alan);
 
 // Bu karede 'alan' icinde sol tus birakildi / parmak kalkti.
 bool tiklama_birakildi(Rectangle alan);
+
+// --- Dokunmatik ekran ---
+
+// Tarayicida ve ana isaretci parmak ise (telefon/tablet) true. Masaustunde (exe) hep false.
+bool dokunmatik_mi(void);
+
+// Dokunmatikte, ekranda en az ~44 CSS pikseli olacak canvas yuksekligi; 'normal'den kucukse
+// 'normal'. Fare ile hep 'normal' doner, yani bilgisayardaki duzen degismez.
+int dokunma_boyu(int normal);
+
+// --- Yazi kutulari ---
+// Tarayicida her kutunun ustunde seffaf, gercek bir HTML <input> durur (web/shell.html).
+// Telefonda klavye ancak kullanici bir <input>'a dokununca acilir; canvas'a dokunmak yetmez.
+// Kutuyu ve yaziyi C cizmeye devam eder, input yalnizca yaziyi tasir.
+typedef enum {
+    KUTU_GENISLIK = 0,
+    KUTU_YUKSEKLIK,
+    KUTU_ISIM,
+    KUTU_ARAMA
+} YaziKutusu;
+
+// Ekranda gorunen her kutu icin her karede cagrilir: input'u 'alan'in ustune yerlestirir ve
+// 'metin' ile esitler (input'ta yazildiysa metin oradan alinip suzulur, yoksa metin input'a
+// yazilir). Kutu bu karede odaktaysa true. Masaustunde (exe) hicbir sey yapmaz, false doner.
+bool yazi_kutusu(YaziKutusu kutu, Rectangle alan, char *metin, int en_fazla);
+
+// Bu kutuda Enter'a basildi mi (bir kez true doner).
+bool yazi_kutusu_enter(YaziKutusu kutu);
 
 #endif //LABIRENT_OYUNU_GIRIS_H

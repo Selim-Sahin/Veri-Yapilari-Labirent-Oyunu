@@ -8,7 +8,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <style>
     html, body { margin: 0; background: #1e1e1e; color: #ddd; font-family: system-ui, sans-serif; }
-    main { display: flex; flex-direction: column; align-items: center; padding: 16px; gap: 12px; }
+    main { position: relative; display: flex; flex-direction: column; align-items: center; padding: 16px; gap: 12px; }
     /* Canvas oyunun kendi cozunurlugunde cizer (menu 800x600, oyunda labirente gore);
        burada en-boy oranini koruyarak ekrana sigdiriyoruz. Dokunma ve fare koordinatlari
        raylib/emscripten tarafinda canvas'in ekrandaki boyutuna gore cevriliyor.
@@ -28,6 +28,15 @@
       canvas { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
     }
     #durum { font-size: 14px; color: #aaa; }
+    #durum:empty { display: none; }
+    /* Yazi kutulari: canvas'taki kutunun tam ustunde duran, gorunmez gercek <input>'lar.
+       Kutuyu ve yaziyi oyun (C) cizer; input sadece telefonda klavyeyi acmak ve yaziyi
+       tasimak icin var. font-size 16px: iOS odaklaninca sayfayi yakinlastirmasin. */
+    input.kutu { position: absolute; display: none; box-sizing: border-box; margin: 0; padding: 0;
+      border: 0; border-radius: 0; outline: none; background: transparent; color: transparent;
+      caret-color: transparent; font-size: 16px; -webkit-appearance: none; appearance: none;
+      -webkit-tap-highlight-color: transparent; }
+    input.kutu::selection { background: transparent; }
     p { margin: 0; font-size: 14px; color: #999; text-align: center; }
     kbd { background: #333; border-radius: 4px; padding: 1px 6px; color: #eee; }
   </style>
@@ -36,6 +45,11 @@
   <main>
     <div id="durum">Yükleniyor…</div>
     <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <!-- Sira giris.h'deki YaziKutusu ile ayni olmali -->
+    <input class="kutu" aria-label="Labirent genişliği" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" enterkeyhint="done">
+    <input class="kutu" aria-label="Labirent yüksekliği" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" enterkeyhint="done">
+    <input class="kutu" aria-label="İsim" maxlength="15" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+    <input class="kutu" aria-label="Skor tablosunda ara" maxlength="20" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
     <p class="telefon-ipucu">Telefonda: yatay tutarsan labirent daha büyük görünür; 20×12 gibi küçük bir boyut seç.</p>
   </main>
   <script>
@@ -68,6 +82,73 @@
       var k = canvasKonumu(e), t = Module.tiklama;
       t.birakmaX = k.x; t.birakmaY = k.y; t.birakma++;
     });
+
+    // Yazi kutulari (giris.c: yazi_kutusu). C her karede gorunen kutuyu kaydeder; input
+    // canvas'taki kutunun ustune oturur. Telefonda klavye yalnizca kullanicinin dokunusu
+    // bir <input>'a geldiginde acilir: dokunus dogrudan input'a dustugu icin tarayici onu
+    // kendisi odaklar; ayrica ayni olayin icinde focus() da cagiriyoruz.
+    var kutular = Array.prototype.slice.call(document.querySelectorAll('input.kutu'));
+    var anaAlan = document.querySelector('main');
+    kutular.forEach(function (el) {
+      el._kirli = false; el._enter = false; el._kare = 0;
+      function odakla() { if (document.activeElement !== el) el.focus(); }
+      el.addEventListener('pointerdown', odakla);
+      el.addEventListener('click', odakla);
+      el.addEventListener('input', function () {
+        // Sayi kutusunda rakam disini hemen at: C bir sonraki karede suzene kadar maxlength
+        // dolup sonraki rakami engellemesin
+        if (el.inputMode === 'numeric') {
+          var temiz = el.value.replace(/[^0-9]/g, '');
+          if (temiz !== el.value) el.value = temiz;
+        }
+        el._kirli = true;
+      });
+    });
+    // Yazi kutusundaki tuslar oyuna gitmesin. raylib (emscripten GLFW) klavyeyi window'da
+    // YAKALAMA asamasinda dinliyor; input'ta stopPropagation cok gec kalir: harf iki kez
+    // yazilir, GLFW Backspace'i de engeller. Bu dinleyici index.js'den once kaydedildigi
+    // icin once calisir; stopImmediatePropagation GLFW'yi atlatir, tarayicinin yazma
+    // davranisi (preventDefault yok) aynen surer.
+    ['keydown', 'keypress', 'keyup'].forEach(function (tur) {
+      window.addEventListener(tur, function (e) {
+        var el = e.target;
+        if (kutular.indexOf(el) < 0) return;
+        e.stopImmediatePropagation();
+        if (tur === 'keydown' && e.key === 'Enter') {
+          e.preventDefault();
+          el._enter = true; el.blur(); canvas.focus();
+        }
+      }, true);
+    });
+    Module.kutuYerlestir = function (i, x, y, w, h, kare) {
+      var el = kutular[i], c = canvas.getBoundingClientRect(), a = anaAlan.getBoundingClientRect();
+      var o = c.width / canvas.width;
+      el.style.left = (c.left - a.left + x * o) + 'px';
+      el.style.top = (c.top - a.top + y * o) + 'px';
+      el.style.width = (w * o) + 'px';
+      el.style.height = (h * o) + 'px';
+      el._kare = kare;
+      if (el.style.display !== 'block') el.style.display = 'block';
+    };
+    Module.kutulariGizle = function (kare) {
+      kutular.forEach(function (el) {
+        if (el.style.display === 'block' && el._kare < kare - 1) {
+          if (document.activeElement === el) { el.blur(); canvas.focus(); }
+          el.style.display = 'none';
+          el._kirli = false; el._enter = false;
+        }
+      });
+    };
+    // Yazildiysa yeni deger, yazilmadiysa null
+    Module.kutuOku = function (i) {
+      var el = kutular[i];
+      if (!el._kirli) return null;
+      el._kirli = false;
+      return el.value;
+    };
+    Module.kutuYaz = function (i, s) { var el = kutular[i]; if (el.value !== s) el.value = s; };
+    Module.kutuOdakta = function (i) { return document.activeElement === kutular[i] ? 1 : 0; };
+    Module.kutuEnter = function (i) { var el = kutular[i], e = el._enter; el._enter = false; return e ? 1 : 0; };
   </script>
   {{{ SCRIPT }}}
 </body>

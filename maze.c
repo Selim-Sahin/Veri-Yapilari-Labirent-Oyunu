@@ -352,30 +352,43 @@ void show_scores_gui() {
         fclose(file);
     }
 
-    DrawText("EN YUKSEK SKORLAR", 250, 40, 40, DARKBLUE);
+    // --- DUZEN ---
+    // Bilgisayarda eski konumlar. Dokunmatikte butonlar ve arama kutusu parmak boyunda:
+    // ustte siralama butonlari, altta [ARA kutusu][BUL] ve main.c'deki [MENUYE DON][SIFIRLA].
+    bool d = dokunmatik_mi();
+    int h = dokunma_boyu(50);   // main.c'deki alt butonlarla ayni
+    int sh = dokunma_boyu(30);  // siralama butonlari
+    Rectangle btnPuan = d ? (Rectangle){100, 52, 290, sh} : (Rectangle){250, 90, 140, 30};
+    Rectangle btnIsim = d ? (Rectangle){410, 52, 290, sh} : (Rectangle){410, 90, 140, 30};
+    int ara_y = 590 - h - 10 - h;  // dokunmatikte arama satiri, alt butonlarin ustu
+    Rectangle kutuAra = d ? (Rectangle){170, ara_y, 350, h} : (Rectangle){300, 555, 200, 30};
+    Rectangle btnAra = d ? (Rectangle){530, ara_y, 170, h} : (Rectangle){510, 555, 60, 30};
+    int cizgi_y = d ? (int)(btnPuan.y + sh + 8) : 130;
+    int liste_y = cizgi_y + 10;
+    int liste_son = d ? ara_y - 34 : 500;   // bu y'den sonra satir cizilmez
+    int satir_boyu = d ? 26 : 30, satir_arasi = d ? 34 : 40;
+    int dugme_yazi = d ? (int)(sh * 0.3f) : 18;
+    int kutu_yazi = d ? (int)(h * 0.45f) : 20;
 
-    Rectangle btnPuan = {250, 90, 140, 30};
-    Rectangle btnIsim = {410, 90, 140, 30};
+    if (d) DrawText("EN YUKSEK SKORLAR", 100, 12, 32, DARKBLUE);
+    else DrawText("EN YUKSEK SKORLAR", 250, 40, 40, DARKBLUE);
+
     Color c1 = (sort_mode == 0) ? BLUE : LIGHTGRAY;
     Color c2 = (sort_mode == 1) ? BLUE : LIGHTGRAY;
     DrawRectangleRec(btnPuan, c1);
     DrawRectangleRec(btnIsim, c2);
-    DrawText("SIRALA: PUAN", 260, 95, 18, WHITE);
-    DrawText("SIRALA: ISIM", 420, 95, 18, WHITE);
+    if (d) {
+        DrawText("SIRALA: PUAN", btnPuan.x + (btnPuan.width - MeasureText("SIRALA: PUAN", dugme_yazi)) / 2,
+                 btnPuan.y + (sh - dugme_yazi) / 2, dugme_yazi, WHITE);
+        DrawText("SIRALA: ISIM", btnIsim.x + (btnIsim.width - MeasureText("SIRALA: ISIM", dugme_yazi)) / 2,
+                 btnIsim.y + (sh - dugme_yazi) / 2, dugme_yazi, WHITE);
+    } else {
+        DrawText("SIRALA: PUAN", 260, 95, 18, WHITE);
+        DrawText("SIRALA: ISIM", 420, 95, 18, WHITE);
+    }
 
     if (tiklama_basildi(btnPuan)) sort_mode = 0;
     if (tiklama_basildi(btnIsim)) sort_mode = 1;
-
-    // --- ARAMA KUTUSU ---
-    DrawText("ARA:", 250, 560, 20, BLACK);
-    DrawRectangle(300, 555, 200, 30, LIGHTGRAY);
-    DrawRectangleLines(300, 555, 200, 30, DARKGRAY);
-    DrawText(search_text, 310, 560, 20, BLACK);
-
-    Rectangle btnAra = {510, 555, 60, 30};
-    DrawRectangleRec(btnAra, LIGHTGRAY);
-    DrawRectangleLinesEx(btnAra, 1, DARKGRAY);
-    DrawText("BUL", 520, 560, 20, BLACK);
 
     int key = GetCharPressed();
     while (key > 0) {
@@ -393,6 +406,26 @@ void show_scores_gui() {
         }
     }
 
+    // Tarayici: kutunun ustundeki <input> ile esitle; Enter = BUL
+    bool ara_odak = yazi_kutusu(KUTU_ARAMA, kutuAra, search_text, 20);
+    search_letter_count = (int)strlen(search_text);
+    bool ara_enter = yazi_kutusu_enter(KUTU_ARAMA);
+
+    // --- ARAMA KUTUSU ---
+    int kutu_yazi_y = d ? (int)(kutuAra.y + (h - kutu_yazi) / 2) : 560;
+    if (d) DrawText("ARA:", 100, kutuAra.y + (h - 24) / 2, 24, BLACK);
+    else DrawText("ARA:", 250, 560, 20, BLACK);
+    DrawRectangleRec(kutuAra, LIGHTGRAY);
+    DrawRectangleLines(kutuAra.x, kutuAra.y, kutuAra.width, kutuAra.height, DARKGRAY);
+    DrawText(search_text, kutuAra.x + 10, kutu_yazi_y, kutu_yazi, BLACK);
+    if (ara_odak && ((int)(GetTime() * 2)) % 2 == 0)
+        DrawRectangle(kutuAra.x + 12 + MeasureText(search_text, kutu_yazi), kutu_yazi_y, 2, kutu_yazi, BLACK);
+
+    DrawRectangleRec(btnAra, LIGHTGRAY);
+    DrawRectangleLinesEx(btnAra, 1, DARKGRAY);
+    if (d) DrawText("BUL", btnAra.x + (btnAra.width - MeasureText("BUL", kutu_yazi)) / 2, kutu_yazi_y, kutu_yazi, BLACK);
+    else DrawText("BUL", 520, 560, 20, BLACK);
+
     SkorDugumu **dizi = NULL;
     if (eleman_sayisi > 0) {
         dizi = (SkorDugumu**)malloc(eleman_sayisi * sizeof(SkorDugumu*));
@@ -400,7 +433,7 @@ void show_scores_gui() {
         agaci_diziye_dok(kok, dizi, &index);
 
         // ARAMA ISLEMI (Butona basilirsa)
-        if (tiklama_basildi(btnAra)) {
+        if (tiklama_basildi(btnAra) || ara_enter) {
             // Binary search icin gecici dizi olusturup isme gore siraliyoruz
             SkorDugumu **aramaDizisi = (SkorDugumu**)malloc(eleman_sayisi * sizeof(SkorDugumu*));
             for(int i=0; i<eleman_sayisi; i++) aramaDizisi[i] = dizi[i];
@@ -436,26 +469,29 @@ void show_scores_gui() {
         }
 
         // LISTELEME
-        int y_pos = 140;
+        int y_pos = liste_y;
         for (int i = 0; i < eleman_sayisi; i++) {
-            if (y_pos > 500) break;
-            DrawText(TextFormat("%d. %s", i + 1, dizi[i]->isim), 250, y_pos, 30, BLACK);
-            DrawText(TextFormat("%d Puan", dizi[i]->puan), 550, y_pos, 30, DARKGREEN);
-            y_pos += 40;
+            if (y_pos > liste_son) break;
+            DrawText(TextFormat("%d. %s", i + 1, dizi[i]->isim), d ? 100 : 250, y_pos, satir_boyu, BLACK);
+            DrawText(TextFormat("%d Puan", dizi[i]->puan), d ? 520 : 550, y_pos, satir_boyu, DARKGREEN);
+            y_pos += satir_arasi;
         }
 
-        // SONUC MESAJI (DINAMIK)
+        // SONUC MESAJI (DINAMIK) - dokunmatikte basligin yaninda, arama satirinda yer yok
+        int sonuc_x = d ? 480 : 600, sonuc_y = d ? 18 : 560, sonuc_boyu = d ? 22 : 20;
         if (is_found && current_rank != -1) {
-             DrawText(TextFormat("BULUNDU! SIRA: %d", current_rank), 600, 560, 20, GREEN);
+             DrawText(TextFormat("BULUNDU! SIRA: %d", current_rank), sonuc_x, sonuc_y, sonuc_boyu, GREEN);
         } else if (search_result_state == -1) {
-             DrawText("YOK!", 600, 560, 20, RED);
+             DrawText("YOK!", sonuc_x, sonuc_y, sonuc_boyu, RED);
         }
 
         free(dizi);
     } else {
-        DrawText("Henuz kayitli skor yok.", 300, 150, 20, GRAY);
+        if (d) DrawText("Henuz kayitli skor yok.", 100, liste_y, 26, GRAY);
+        else DrawText("Henuz kayitli skor yok.", 300, 150, 20, GRAY);
     }
 
-    DrawLine(250, 130, 600, 130, DARKBLUE);
+    if (d) DrawLine(100, cizgi_y, 700, cizgi_y, DARKBLUE);
+    else DrawLine(250, 130, 600, 130, DARKBLUE);
     bst_temizle(kok);
 }
