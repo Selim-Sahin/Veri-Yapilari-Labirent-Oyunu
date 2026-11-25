@@ -33,7 +33,7 @@ jobs:
       - name: Yayinlanacak dosyalari topla
         run: |
           mkdir -p _site
-          cp build-web/index.html build-web/index.js build-web/index.wasm _site/
+          cp build-web/index.html build-web/index.js build-web/index.wasm build-web/favicon.svg build-web/apple-touch-icon.png _site/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

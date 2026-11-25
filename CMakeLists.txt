@@ -55,4 +55,9 @@ if (EMSCRIPTEN)
     # shell.html degisince sayfa yeniden uretilsin
     set_property(TARGET Veri_Yapilari_Projesi_Labirent_Oyunu APPEND PROPERTY
             LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+    # Sekme logosu ve iOS ana ekran ikonu index.html'in yanina kopyalanir
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/web/favicon.svg
+            ${CMAKE_CURRENT_BINARY_DIR}/favicon.svg COPYONLY)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/web/apple-touch-icon.png
+            ${CMAKE_CURRENT_BINARY_DIR}/apple-touch-icon.png COPYONLY)
 endif()
