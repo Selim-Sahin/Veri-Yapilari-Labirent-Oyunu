@@ -18,10 +18,6 @@ Bu proje, C dili ve Raylib kütüphanesi kullanılarak geliştirilmiş bir labir
 Oyun, Emscripten ile WebAssembly'ye derlenip GitHub Pages'te yayınlanıyor:
 **https://selim-sahin.github.io/Veri-Yapilari-Labirent-Oyunu/**
 
-![Labirent oyunu: H tuşuyla BFS en kısa yolu gösterilmiş](web/onizleme.png)
-
-*H tuşu: Queue ile BFS çalıştırılır ve en kısa yol oklarla gösterilir.*
-
 `main` dalına yapılan her push'ta `.github/workflows/pages.yml` oyunu yeniden derleyip yayınlar.
 Elle derlemek için (emsdk kuruluyken):
 ```
