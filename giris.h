@@ -51,4 +51,29 @@ bool yazi_kutusu(YaziKutusu kutu, Rectangle alan, char *metin, int en_fazla);
 // Bu kutuda Enter'a basildi mi (bir kez true doner).
 bool yazi_kutusu_enter(YaziKutusu kutu);
 
+// --- Oyun komutlari ---
+// Klavye (W/A/S/D/H/Z), tarayicidaki ekran tuslari ve parmakla kaydirma ayni komutlara
+// donusur; oyun dongusu yalnizca bunlari isler. Sayilar shell.html'deki data-komut ile ayni.
+typedef enum {
+    KOMUT_YOK = 0,
+    KOMUT_YUKARI = 1,
+    KOMUT_ASAGI = 2,
+    KOMUT_SOL = 3,
+    KOMUT_SAG = 4,
+    KOMUT_IPUCU = 5,
+    KOMUT_GERI_AL = 6,
+    KOMUT_MENU = 7
+} OyunKomutu;
+
+// Bu karenin komutu: once klavye (eski oncelik sirasiyla), yoksa tarayicidaki kuyruktan
+// bir komut. Karede en fazla bir komut: hizli basislar kaybolmaz, sirayla islenir.
+OyunKomutu oyun_komutu(void);
+
+// Tarayicida oyun ekranina girip cikarken cagrilir: dokunmatik kontrol paneli yalnizca
+// oyundayken gorunur, kaydirma yalnizca oyundayken hareket sayilir. Masaustunde bos.
+void oyun_modu(bool acik);
+
+// MENU iki basista cikar; ilk basistan sonra ekrandaki MENU butonu "CIKILSIN MI?" olur.
+void menu_onay_goster(bool onayda);
+
 #endif //LABIRENT_OYUNU_GIRIS_H

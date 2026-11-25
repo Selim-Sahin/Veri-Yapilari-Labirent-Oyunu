@@ -120,6 +120,37 @@ bool yazi_kutusu_enter(YaziKutusu kutu) {
     return EM_ASM_INT({ return Module.kutuEnter($0); }, kutu) != 0;
 }
 
+static OyunKomutu klavye_komutu(void);
+
+OyunKomutu oyun_komutu(void) {
+    OyunKomutu k = klavye_komutu();
+    if (k != KOMUT_YOK) return k;
+    // shell.html: ekran tuslari ve kaydirma Module.komutlar kuyruguna eklenir
+    return (OyunKomutu)EM_ASM_INT({
+        return (Module.komutlar && Module.komutlar.length) ? Module.komutlar.shift() : 0;
+    });
+}
+
+void oyun_modu(bool acik) {
+    EM_ASM({
+        document.body.classList.toggle('oyunda', !!$0);
+        if (Module.komutlar) Module.komutlar.length = 0; // onceki ekrandan kalan komut olmasin
+    }, acik);
+    menu_onay_goster(false);
+}
+
+void menu_onay_goster(bool onayda) {
+    static int son = -1;
+    if ((int)onayda == son) return;
+    son = onayda;
+    EM_ASM({
+        var b = document.getElementById('menu-dugmesi');
+        if (!b) return;
+        b.textContent = $0 ? 'ÇIKILSIN MI?' : 'MENÜ';
+        b.classList.toggle('onay', !!$0);
+    }, onayda);
+}
+
 #else // Masaustu: eskisiyle ayni davranis
 
 void giris_guncelle(void) {}
@@ -143,4 +174,23 @@ bool yazi_kutusu(YaziKutusu kutu, Rectangle alan, char *metin, int en_fazla) {
 
 bool yazi_kutusu_enter(YaziKutusu kutu) { (void)kutu; return false; }
 
+static OyunKomutu klavye_komutu(void);
+
+OyunKomutu oyun_komutu(void) { return klavye_komutu(); }
+
+void oyun_modu(bool acik) { (void)acik; }
+
+void menu_onay_goster(bool onayda) { (void)onayda; }
+
 #endif
+
+// game.c'deki eski if-else zinciriyle ayni oncelik: W, S, A, D, H, Z
+static OyunKomutu klavye_komutu(void) {
+    if (IsKeyPressed(KEY_W)) return KOMUT_YUKARI;
+    if (IsKeyPressed(KEY_S)) return KOMUT_ASAGI;
+    if (IsKeyPressed(KEY_A)) return KOMUT_SOL;
+    if (IsKeyPressed(KEY_D)) return KOMUT_SAG;
+    if (IsKeyPressed(KEY_H)) return KOMUT_IPUCU;
+    if (IsKeyPressed(KEY_Z)) return KOMUT_GERI_AL;
+    return KOMUT_YOK;
+}

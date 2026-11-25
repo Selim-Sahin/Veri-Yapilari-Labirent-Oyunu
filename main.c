@@ -98,7 +98,9 @@ int main() {
         }
 
         else if (durum == AYARLAR) {
-            int en_fazla_w = 50, en_fazla_h = 25;
+            // Dokunmatikte buyuk labirentin hucreleri okunamayacak kadar kuculur: 20x20 sinir
+            int en_fazla_w = dokunmatik_mi() ? 20 : 50;
+            int en_fazla_h = dokunmatik_mi() ? 20 : 25;
 
             // Bilgisayarda eski konumlar; dokunmatikte kutular ve butonlar parmak boyunda
             bool d = dokunmatik_mi();

@@ -37,6 +37,39 @@
       caret-color: transparent; font-size: 16px; -webkit-appearance: none; appearance: none;
       -webkit-tap-highlight-color: transparent; }
     input.kutu::selection { background: transparent; }
+
+    /* Dokunmatik oyun kontrolleri: yalnizca telefonda/tablette ve oyun ekranindayken
+       (C, oyuna girerken body'ye 'oyunda' ekler). Labirentin ustunu kapatmaz:
+       dikeyde altinda, yatayda iki yaninda (solda eylemler, sagda yon tuslari). */
+    #kontroller { display: none; }
+    #kontroller button { font: 600 15px system-ui, sans-serif; color: #fff; background: #2c3e50;
+      border: 0; border-radius: 10px; padding: 0; min-height: 44px; min-width: 44px;
+      touch-action: manipulation; user-select: none; -webkit-user-select: none;
+      -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+    #kontroller button:active, #kontroller button.basili { background: #1e6fe0; }
+    #kontroller button.onay { background: #c0392b; }
+    .yon-tuslari { display: grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px);
+      gap: 0; grid-template-areas: ". u ." "l . r" ". d ."; }
+    .yon-tuslari button { font-size: 24px !important; }
+    .yon-tuslari .yukari { grid-area: u; } .yon-tuslari .asagi { grid-area: d; }
+    .yon-tuslari .sol { grid-area: l; } .yon-tuslari .sag { grid-area: r; }
+    .eylemler { display: flex; flex-direction: column; gap: 8px; }
+    .eylemler button { width: 120px; height: 52px; }
+    @media (pointer: coarse) {
+      body.oyunda .telefon-ipucu { display: none; }
+      body.oyunda #kontroller { display: flex; gap: 20px; align-items: center; justify-content: center; }
+      /* Dikey: panel (180px) labirentin altinda */
+      body.oyunda canvas { max-height: calc(100vh - 16px - 180px - 8px); max-height: calc(100dvh - 16px - 180px - 8px); }
+    }
+    @media (pointer: coarse) and (orientation: landscape) {
+      body.oyunda main { flex-direction: row; justify-content: center; }
+      body.oyunda #kontroller { display: contents; }
+      body.oyunda .eylemler { order: -1; width: 110px; }
+      body.oyunda .eylemler button { width: 110px; height: 48px; }
+      body.oyunda .yon-tuslari { order: 1; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); }
+      body.oyunda canvas { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px);
+        max-width: calc(100vw - 16px - 110px - 168px - 16px); }
+    }
     p { margin: 0; font-size: 14px; color: #999; text-align: center; }
     kbd { background: #333; border-radius: 4px; padding: 1px 6px; color: #eee; }
   </style>
@@ -50,7 +83,20 @@
     <input class="kutu" aria-label="Labirent yüksekliği" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" enterkeyhint="done">
     <input class="kutu" aria-label="İsim" maxlength="15" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
     <input class="kutu" aria-label="Skor tablosunda ara" maxlength="20" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
-    <p class="telefon-ipucu">Telefonda: yatay tutarsan labirent daha büyük görünür; 20×12 gibi küçük bir boyut seç.</p>
+    <div id="kontroller">
+      <div class="yon-tuslari">
+        <button type="button" class="yukari" data-komut="1" aria-label="Yukarı">▲</button>
+        <button type="button" class="sol" data-komut="3" aria-label="Sol">◀</button>
+        <button type="button" class="sag" data-komut="4" aria-label="Sağ">▶</button>
+        <button type="button" class="asagi" data-komut="2" aria-label="Aşağı">▼</button>
+      </div>
+      <div class="eylemler">
+        <button type="button" data-komut="5">İPUCU</button>
+        <button type="button" data-komut="6">GERİ AL</button>
+        <button type="button" data-komut="7" id="menu-dugmesi">MENÜ</button>
+      </div>
+    </div>
+    <p class="telefon-ipucu">Telefonda labirent en fazla 20×20 olabilir. Oyunda yön tuşlarına bas ya da labirentin üstünde parmağını kaydır.</p>
   </main>
   <script>
     var canvas = document.getElementById('canvas');
@@ -71,6 +117,41 @@
       return { x: (e.clientX - r.left) * canvas.width / r.width,
                y: (e.clientY - r.top) * canvas.height / r.height };
     }
+    // Oyun komutlari (giris.c: oyun_komutu karede birini alir). Sayilar giris.h'deki OyunKomutu.
+    Module.komutlar = [];
+    function komutEkle(k) { if (Module.komutlar.length < 8) Module.komutlar.push(k); }
+    document.querySelectorAll('#kontroller button').forEach(function (b) {
+      var k = +b.getAttribute('data-komut');
+      // click degil pointerdown: gecikme yok; preventDefault cift dokunma yakinlastirmasini,
+      // odak kaymasini ve dokunmadan sonra uretilen sahte fare olaylarini engeller.
+      b.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        b.classList.add('basili');
+        komutEkle(k);
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+        b.addEventListener(t, function () { b.classList.remove('basili'); });
+      });
+      b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    });
+
+    // Parmakla kaydirma: oyundayken labirentin ustunde, en az 24 CSS px; baskin eksen yonu
+    // belirler, bir kaydirma bir adim. Fare ile surukleme sayilmaz (bilgisayar ayni kalsin).
+    var kaydirma = null;
+    canvas.addEventListener('pointerdown', function (e) {
+      kaydirma = (e.isPrimary && e.pointerType !== 'mouse' && document.body.classList.contains('oyunda'))
+        ? { x: e.clientX, y: e.clientY } : null;
+    });
+    canvas.addEventListener('pointerup', function (e) {
+      if (!kaydirma || !e.isPrimary) return;
+      var dx = e.clientX - kaydirma.x, dy = e.clientY - kaydirma.y;
+      kaydirma = null;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return; // kisa dokunus hareket degil
+      if (Math.abs(dx) > Math.abs(dy)) komutEkle(dx > 0 ? 4 : 3);
+      else komutEkle(dy > 0 ? 2 : 1);
+    });
+    canvas.addEventListener('pointercancel', function () { kaydirma = null; });
+
     canvas.addEventListener('pointerdown', function (e) {
       canvas.focus();
       if (!e.isPrimary || e.button !== 0) return; // ikinci parmak, sag/orta tus sayilmaz
