@@ -219,14 +219,15 @@ int main() {
         else if (durum == KAYIT_SORUSU) {
             bool d = dokunmatik_mi();
             int h = dokunma_boyu(50);
-            Rectangle btnEvet = d ? (Rectangle){150, 330, 240, h} : (Rectangle){190, 340, 200, 50};
-            Rectangle btnHayir = d ? (Rectangle){410, 330, 240, h} : (Rectangle){410, 340, 200, 50};
+            Rectangle btnEvet = d ? (Rectangle){150, 300, 240, h} : (Rectangle){190, 340, 200, 50};
+            Rectangle btnHayir = d ? (Rectangle){410, 300, 240, h} : (Rectangle){410, 340, 200, 50};
 
-            OrtaYazi("TEBRIKLER!", d ? 50 : 90, 40, GREEN);
-            OrtaYazi(TextFormat("PUANINIZ: %d", son_puan), d ? 115 : 150, 30, DARKBLUE);
-            OrtaYazi(TextFormat("LABIRENT: %dx%d", son_genislik, son_yukseklik), d ? 160 : 195, 24, GRAY);
-            OrtaYazi("PUANINIZI KAYDETMEK", d ? 215 : 245, 28, BLACK);
-            OrtaYazi("ISTER MISINIZ?", d ? 255 : 280, 28, BLACK);
+            // Telefonda canvas kucultulerek gosterildigi icin yazilar daha buyuk
+            OrtaYazi("TEBRIKLER!", d ? 20 : 90, d ? 56 : 40, GREEN);
+            OrtaYazi(TextFormat("PUANINIZ: %d", son_puan), d ? 90 : 150, d ? 44 : 30, DARKBLUE);
+            OrtaYazi(TextFormat("LABIRENT: %dx%d", son_genislik, son_yukseklik), d ? 145 : 195, d ? 34 : 24, GRAY);
+            OrtaYazi("PUANINIZI KAYDETMEK", d ? 195 : 245, d ? 36 : 28, BLACK);
+            OrtaYazi("ISTER MISINIZ?", d ? 240 : 280, d ? 36 : 28, BLACK);
 
             if (ButonCiz("EVET", btnEvet)) {
                 oyuncu_ismi[0] = '\0';
@@ -249,8 +250,8 @@ int main() {
             int mesaj_y = (int)(btnKaydet.y + btnKaydet.height + 20);
 
             OrtaYazi(TextFormat("PUANINIZ: %d  (%dx%d)", son_puan, son_genislik, son_yukseklik),
-                     d ? 40 : 150, 30, DARKBLUE);
-            DrawText("Lutfen isminizi giriniz:", d ? 150 : 250, d ? 140 : 250, d ? 26 : 20, BLACK);
+                     d ? 30 : 150, d ? 40 : 30, DARKBLUE);
+            DrawText("Lutfen isminizi giriniz:", d ? 150 : 250, d ? 125 : 250, d ? 34 : 20, BLACK);
             if (!d) DrawText(TextFormat("(%d-%d harf/rakam, ayni isim bir kez kullanilir)", ISIM_EN_AZ, ISIM_EN_FAZLA),
                              250, 325, 16, GRAY);
 
@@ -291,7 +292,7 @@ int main() {
                 // Cevap gelene kadar butonlar calismaz; her karede sonucu sor
                 DrawRectangleRec(btnKaydet, GRAY);
                 DrawRectangleRec(btnVazgec, GRAY);
-                OrtaYazi("KAYDEDILIYOR...", mesaj_y, 24, DARKGRAY);
+                OrtaYazi("KAYDEDILIYOR...", mesaj_y, d ? 32 : 24, DARKGRAY);
                 DepoDurumu sonuc = skor_kaydet_durumu();
                 if (sonuc == DEPO_TAMAM) {
                     kaydediliyor = false;
@@ -320,7 +321,7 @@ int main() {
                         skor_kaydet_baslat(oyuncu_ismi, son_puan, son_genislik, son_yukseklik);
                     }
                 }
-                if (isim_mesaji[0] != '\0') OrtaYazi(isim_mesaji, mesaj_y, 22, RED);
+                if (isim_mesaji[0] != '\0') OrtaYazi(isim_mesaji, mesaj_y, d ? 28 : 22, RED);
             }
         }
 
