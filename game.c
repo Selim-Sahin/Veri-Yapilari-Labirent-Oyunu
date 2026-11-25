@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "game.h"
+#include "giris.h"
 #include "stack.h"
 
 int oyunu_baslat(Labirent *labirent) {
@@ -51,6 +52,7 @@ int oyunu_baslat(Labirent *labirent) {
     }
 
     while (!WindowShouldClose()) {
+        giris_guncelle(); // fare + dokunma durumunu bu kare icin oku
 
         int x = labirent->oyuncu_x;
         int y = labirent->oyuncu_y;

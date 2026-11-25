@@ -17,7 +17,25 @@
   <style>
     html, body { margin: 0; background: #1e1e1e; color: #ddd; font-family: system-ui, sans-serif; }
     main { display: flex; flex-direction: column; align-items: center; padding: 16px; gap: 12px; }
-    canvas { display: block; outline: none; background: #000; max-width: 100%; }
+    /* Canvas oyunun kendi cozunurlugunde cizer (menu 800x600, oyunda labirente gore);
+       burada en-boy oranini koruyarak ekrana sigdiriyoruz. Dokunma ve fare koordinatlari
+       raylib/emscripten tarafinda canvas'in ekrandaki boyutuna gore cevriliyor.
+       Canvas'a border/padding VERMEYIN: koordinat cevirisi bozulur. */
+    canvas { display: block; outline: none; background: #000;
+      width: auto; height: auto; max-width: 100%;
+      max-height: calc(100vh - 56px); max-height: calc(100dvh - 56px);
+      touch-action: none; user-select: none; -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent; }
+    .telefon-ipucu { display: none; }
+    @media (pointer: coarse) { .telefon-ipucu { display: block; } }
+    @media (max-width: 600px), (max-height: 500px) {
+      main { padding: 8px; gap: 8px; }
+    }
+    /* Yatay telefon: yukseklik az, oyun yuklenince basligi da kaldir */
+    @media (max-height: 500px) {
+      body.oyun-hazir #tanitim { display: none; }
+      canvas { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
+    }
     #durum { font-size: 14px; color: #aaa; }
     p { margin: 0; font-size: 14px; color: #999; text-align: center; }
     kbd { background: #333; border-radius: 4px; padding: 1px 6px; color: #eee; }
@@ -52,6 +70,7 @@
     </header>
     <div id="durum">Yükleniyor…</div>
     <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <p class="telefon-ipucu">Telefonda: yatay tutarsan labirent daha büyük görünür; 20×12 gibi küçük bir boyut seç.</p>
     <p>Hareket: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> · İpucu: <kbd>H</kbd> · Geri al: <kbd>Z</kbd></p>
     <p>Klavye ve fare gerekir. Skorlar sayfa yenilenince sıfırlanır.</p>
   </main>
@@ -66,6 +85,15 @@
       }
     };
     canvas.addEventListener('click', function () { canvas.focus(); });
+
+    // Dokunmatik ekran: raylib dokunmayi fare konumuna cevirir ama tiklama saymaz.
+    // giris.c bu sayaclari her karede okuyup dokunmayi tiklama olarak isler.
+    Module.dokunmaBaslama = 0;
+    Module.dokunmaBitis = 0;
+    canvas.addEventListener('touchstart', function () { Module.dokunmaBaslama++; }, { passive: true });
+    canvas.addEventListener('touchend', function (e) {
+      if (e.touches.length === 0) Module.dokunmaBitis++; // son parmak kalkinca
+    }, { passive: true });
   </script>
   {{{ SCRIPT }}}
 </body>

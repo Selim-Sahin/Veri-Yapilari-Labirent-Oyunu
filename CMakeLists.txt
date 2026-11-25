@@ -7,7 +7,8 @@ set(CMAKE_C_STANDARD 11)
 include(FetchContent)
 FetchContent_Declare(
         raylib
-        URL https://github.com/raysan5/raylib/archive/master.tar.gz
+        # master'in sabit bir commit'i: raylib'in web dokunma/fare davranisi bizden habersiz degismesin
+        URL https://github.com/raysan5/raylib/archive/7cbadefd060c5ba1a78197d129f83a60df42f741.tar.gz
 )
 FetchContent_MakeAvailable(raylib)
 # -----------------------------------------
@@ -23,7 +24,9 @@ add_executable(Veri_Yapilari_Projesi_Labirent_Oyunu WIN32
         game.h
         game.c
         queue.h
-        queue.c)
+        queue.c
+        giris.h
+        giris.c)
 
 # Raylib kutuphanesini projeye bagla
 # Windows'ta pencere yonetimi icin gerekli bazi sistem kutuphanelerini de ekliyoruz
