@@ -47,16 +47,29 @@
       setStatus: function (t) { document.getElementById('durum').textContent = t || ''; },
       onRuntimeInitialized: function () { canvas.focus(); }
     };
-    canvas.addEventListener('click', function () { canvas.focus(); });
 
-    // Dokunmatik ekran: raylib dokunmayi fare konumuna cevirir ama tiklama saymaz.
-    // giris.c bu sayaclari her karede okuyup dokunmayi tiklama olarak isler.
-    Module.dokunmaBaslama = 0;
-    Module.dokunmaBitis = 0;
-    canvas.addEventListener('touchstart', function () { Module.dokunmaBaslama++; }, { passive: true });
-    canvas.addEventListener('touchend', function (e) {
-      if (e.touches.length === 0) Module.dokunmaBitis++; // son parmak kalkinca
-    }, { passive: true });
+    // Tiklama sayaclari (giris.c her karede okur). Fare, dokunma ve kalem ayni yoldan gelir.
+    // - Sayac: bas+birak iki kare arasina sigsa da (RustDesk, hizli dokunus) tiklama kaybolmaz.
+    // - Konum olay aninda canvas pikseline cevrilir; sonradan fare konumuna guvenilmez.
+    // - Sadece pointer olaylari dinlenir: tarayicinin dokunmadan sonra urettigi sahte
+    //   mousedown/mouseup/click olaylari pointer olayi degildir, dokunus iki kez sayilmaz.
+    Module.tiklama = { basma: 0, birakma: 0, basmaX: -1, basmaY: -1, birakmaX: -1, birakmaY: -1 };
+    function canvasKonumu(e) {
+      var r = canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * canvas.width / r.width,
+               y: (e.clientY - r.top) * canvas.height / r.height };
+    }
+    canvas.addEventListener('pointerdown', function (e) {
+      canvas.focus();
+      if (!e.isPrimary || e.button !== 0) return; // ikinci parmak, sag/orta tus sayilmaz
+      var k = canvasKonumu(e), t = Module.tiklama;
+      t.basmaX = k.x; t.basmaY = k.y; t.basma++;
+    });
+    canvas.addEventListener('pointerup', function (e) {
+      if (!e.isPrimary || e.button !== 0) return;
+      var k = canvasKonumu(e), t = Module.tiklama;
+      t.birakmaX = k.x; t.birakmaY = k.y; t.birakma++;
+    });
   </script>
   {{{ SCRIPT }}}
 </body>

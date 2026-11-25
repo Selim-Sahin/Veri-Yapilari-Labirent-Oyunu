@@ -24,7 +24,7 @@ bool ButonCiz(const char *text, Rectangle rec) {
     DrawRectangleLinesEx(rec, 2, DARKGRAY);
     int textW = MeasureText(text, 20);
     DrawText(text, rec.x + (rec.width - textW) / 2, rec.y + (rec.height - 20) / 2, 20, BLACK);
-    if (uzerinde && tiklama_birakildi()) tiklandi = true;
+    if (tiklama_birakildi(rec)) tiklandi = true;
     return tiklandi;
 }
 
@@ -91,13 +91,13 @@ int main() {
             Rectangle kutu1 = {400, 195, 100, 30};
             DrawRectangleRec(kutu1, (aktif_kutu == 0) ? SKYBLUE : LIGHTGRAY);
             DrawText(genislik_str, 410, 200, 20, BLACK);
-            if (CheckCollisionPointRec(GetMousePosition(), kutu1) && tiklama_basildi()) aktif_kutu = 0;
+            if (tiklama_basildi(kutu1)) aktif_kutu = 0;
 
             DrawText("Yukseklik (5-25):", 200, 250, 20, BLACK);
             Rectangle kutu2 = {400, 245, 100, 30};
             DrawRectangleRec(kutu2, (aktif_kutu == 1) ? SKYBLUE : LIGHTGRAY);
             DrawText(yukseklik_str, 410, 250, 20, BLACK);
-            if (CheckCollisionPointRec(GetMousePosition(), kutu2) && tiklama_basildi()) aktif_kutu = 1;
+            if (tiklama_basildi(kutu2)) aktif_kutu = 1;
 
             int key = GetCharPressed();
             while (key > 0) {

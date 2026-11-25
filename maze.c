@@ -363,8 +363,8 @@ void show_scores_gui() {
     DrawText("SIRALA: PUAN", 260, 95, 18, WHITE);
     DrawText("SIRALA: ISIM", 420, 95, 18, WHITE);
 
-    if (CheckCollisionPointRec(GetMousePosition(), btnPuan) && tiklama_basildi()) sort_mode = 0;
-    if (CheckCollisionPointRec(GetMousePosition(), btnIsim) && tiklama_basildi()) sort_mode = 1;
+    if (tiklama_basildi(btnPuan)) sort_mode = 0;
+    if (tiklama_basildi(btnIsim)) sort_mode = 1;
 
     // --- ARAMA KUTUSU ---
     DrawText("ARA:", 250, 560, 20, BLACK);
@@ -400,7 +400,7 @@ void show_scores_gui() {
         agaci_diziye_dok(kok, dizi, &index);
 
         // ARAMA ISLEMI (Butona basilirsa)
-        if (CheckCollisionPointRec(GetMousePosition(), btnAra) && tiklama_basildi()) {
+        if (tiklama_basildi(btnAra)) {
             // Binary search icin gecici dizi olusturup isme gore siraliyoruz
             SkorDugumu **aramaDizisi = (SkorDugumu**)malloc(eleman_sayisi * sizeof(SkorDugumu*));
             for(int i=0; i<eleman_sayisi; i++) aramaDizisi[i] = dizi[i];
